@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PANIC">
+  <meta name="theme-color" content="#CC0000">
+  <title>JHSC Panic Alert</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <style>
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background: #1a1a1a;
+      color: #fff;
+    }
+
+    /* Safe area padding for notched iPhones */
+    body {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+
+    /* ===== APP CONTAINER ===== */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+    }
+
+    /* ===== SCREENS ===== */
+    .screen {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+    }
+    .screen.active {
+      display: flex;
+    }
+
+    /* ===== HEADER BAR ===== */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #111;
+      border-bottom: 1px solid #333;
+      min-height: 52px;
+      flex-shrink: 0;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .user-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ccc;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .gps-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #666;
+      transition: background 0.3s;
+      flex-shrink: 0;
+    }
+    .gps-indicator.acquired { background: #22c55e; }
+    .gps-indicator.acquiring { background: #f59e0b; animation: pulse 1.5s infinite; }
+    .gps-indicator.denied { background: #ef4444; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .settings-btn {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+    }
+    .settings-btn:hover { color: #fff; }
+
+    /* ===== TEST MODE BANNER ===== */
+    .test-banner {
+      display: none;
+      background: #2563eb;
+      color: #fff;
+      text-align: center;
+      padding: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      flex-shrink: 0;
+    }
+    .test-banner.active { display: block; }
+
+    /* ===== PANIC BUTTON ===== */
+    .panic-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: linear-gradient(145deg, #b91c1c 0%, #CC0000 40%, #991b1b 100%);
+    }
+
+    .panic-btn {
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #ef4444, #CC0000 50%, #7f1d1d);
+      border: 6px solid rgba(255,255,255,0.3);
+      color: #fff;
+      font-size: 42px;
+      font-weight: 900;
+      letter-spacing: 4px;
+      cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        0 0 60px rgba(0,0,0,0.4),
+        0 0 0 12px rgba(255,255,255,0.08),
+        inset 0 -4px 12px rgba(0,0,0,0.3);
+      transition: transform 0.1s, box-shadow 0.1s;
+      position: relative;
+    }
+
+    .panic-btn:active {
+      transform: scale(0.95);
+      box-shadow:
+        0 0 30px rgba(0,0,0,0.5),
+        0 0 0 12px rgba(255,255,255,0.08),
+        inset 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .panic-btn-label {
+      text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+
+    .panic-subtitle {
+      position: absolute;
+      bottom: -40px;
+      color: rgba(255,255,255,0.7);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+
+    /* ===== SETUP SCREEN ===== */
+    .setup-screen {
+      background: #1a1a1a;
+      padding: 40px 24px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .setup-card {
+      background: #222;
+      border-radius: 16px;
+      padding: 32px 24px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    .setup-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    .setup-subtitle {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #aaa;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 2px solid #333;
+      background: #1a1a1a;
+      color: #fff;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus {
+      border-color: #CC0000;
+    }
+    .form-input::placeholder {
+      color: #555;
+    }
+
+    .save-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      background: #CC0000;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+    .save-btn:hover { background: #b91c1c; }
+    .save-btn:active { background: #991b1b; }
+    .save-btn:disabled {
+      background: #444;
+      color: #888;
+      cursor: not-allowed;
+    }
+
+    .form-error {
+      color: #ef4444;
+      font-size: 12px;
+      margin-top: 4px;
+      display: none;
+    }
+
+    /* ===== SENDING OVERLAY ===== */
+    .sending-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 100;
+      gap: 16px;
+    }
+    .sending-overlay.active { display: flex; }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .sending-text {
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .sending-sub {
+      font-size: 13px;
+      color: #aaa;
+    }
+
+    /* ===== FOOTER ===== */
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      background: #111;
+      border-top: 1px solid #333;
+      flex-shrink: 0;
+    }
+
+    .test-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #666;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .test-toggle input {
+      appearance: none;
+      width: 36px;
+      height: 20px;
+      background: #333;
+      border-radius: 10px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .test-toggle input:checked {
+      background: #2563eb;
+    }
+    .test-toggle input::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .test-toggle input:checked::after {
+      transform: translateX(16px);
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- ===== SETUP SCREEN ===== -->
+    <div id="setup-screen" class="screen setup-screen">
+      <div class="setup-card">
+        <div class="setup-title">JHSC Panic Alert</div>
+        <div class="setup-subtitle">Enter your details to set up the panic alert button. This info is stored only on your device.</div>
+        <form id="setup-form">
+          <div class="form-group">
+            <label class="form-label" for="setup-name">Full Name</label>
+            <input class="form-input" type="text" id="setup-name" placeholder="e.g. John Doe" autocomplete="name" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="setup-email">Work Email</label>
+            <input class="form-input" type="email" id="setup-email" placeholder="e.g. john.doe@magma-amgm.org" autocomplete="email" required>
+            <div class="form-error" id="email-error">Please enter a valid email address</div>
+          </div>
+          <button type="submit" class="save-btn" id="save-btn" disabled>Save & Continue</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ===== MAIN SCREEN ===== -->
+    <div id="main-screen" class="screen">
+      <div class="test-banner" id="test-banner">TEST MODE -- alerts go to admin only</div>
+      <div class="header">
+        <div class="header-left">
+          <div class="gps-indicator" id="gps-indicator" title="GPS Status"></div>
+          <span class="user-name" id="user-name-display"></span>
+        </div>
+        <div class="header-right">
+          <button class="settings-btn" id="settings-btn" title="Settings" aria-label="Settings">&#9881;</button>
+        </div>
+      </div>
+      <div class="panic-area">
+        <button class="panic-btn" id="panic-btn" aria-label="Send Panic Alert">
+          <span class="panic-btn-label">PANIC</span>
+          <span class="panic-subtitle">Tap to send alert</span>
+        </button>
+      </div>
+      <div class="footer">
+        <label class="test-toggle">
+          <input type="checkbox" id="test-toggle">
+          <span>Test Mode</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- ===== SENDING OVERLAY ===== -->
+    <div class="sending-overlay" id="sending-overlay">
+      <div class="spinner"></div>
+      <div class="sending-text">Opening Outlook...</div>
+      <div class="sending-sub" id="sending-gps-status">Capturing location...</div>
+    </div>
+  </div>
+
+  <script>
+    // ===================================================================
+    // JHSC PANIC ALERT PWA
+    // ===================================================================
+
+    (function() {
+      'use strict';
+
+      // ----- CONSTANTS -----
+      const STORAGE_KEY = 'panicUser';
+      const MAILTO_TARGET = 'panicalerts@magma-amgm.org';
+      const GPS_MAX_AGE = 30000;      // 30 seconds
+      const GPS_TIMEOUT = 5000;        // 5 seconds
+      const OUTLOOK_OPEN_DELAY = 1500; // time to show overlay before opening Outlook
+
+      // ----- STATE -----
+      let cachedPosition = null;
+      let gpsStatus = 'acquiring'; // acquiring | acquired | denied
+      let isTestMode = false;
+
+      // ----- DOM REFS -----
+      const setupScreen = document.getElementById('setup-screen');
+      const mainScreen = document.getElementById('main-screen');
+      const setupForm = document.getElementById('setup-form');
+      const nameInput = document.getElementById('setup-name');
+      const emailInput = document.getElementById('setup-email');
+      const emailError = document.getElementById('email-error');
+      const saveBtn = document.getElementById('save-btn');
+      const userNameDisplay = document.getElementById('user-name-display');
+      const gpsIndicator = document.getElementById('gps-indicator');
+      const panicBtn = document.getElementById('panic-btn');
+      const settingsBtn = document.getElementById('settings-btn');
+      const testToggle = document.getElementById('test-toggle');
+      const testBanner = document.getElementById('test-banner');
+      const sendingOverlay = document.getElementById('sending-overlay');
+      const sendingGpsStatus = document.getElementById('sending-gps-status');
+
+      // ----- INIT -----
+      function init() {
+        registerServiceWorker();
+        const user = loadUser();
+        if (user) {
+          showMainScreen(user);
+        } else {
+          showSetupScreen();
+        }
+        startGPS();
+        bindEvents();
+      }
+
+      // ----- SERVICE WORKER -----
+      function registerServiceWorker() {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('sw.js').catch(function(err) {
+            console.warn('SW registration failed:', err);
+          });
+        }
+      }
+
+      // ----- USER STORAGE -----
+      function loadUser() {
+        try {
+          const data = localStorage.getItem(STORAGE_KEY);
+          if (!data) return null;
+          const user = JSON.parse(data);
+          if (user && user.name && user.email) return user;
+          return null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function saveUser(name, email) {
+        const user = { name: name.trim(), email: email.trim().toLowerCase() };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+        return user;
+      }
+
+      // ----- SCREENS -----
+      function showSetupScreen(prefill) {
+        setupScreen.classList.add('active');
+        mainScreen.classList.remove('active');
+        if (prefill) {
+          nameInput.value = prefill.name || '';
+          emailInput.value = prefill.email || '';
+          validateForm();
+        }
+      }
+
+      function showMainScreen(user) {
+        mainScreen.classList.add('active');
+        setupScreen.classList.remove('active');
+        userNameDisplay.textContent = user.name;
+      }
+
+      // ----- GPS -----
+      function startGPS() {
+        if (!navigator.geolocation) {
+          setGPSStatus('denied');
+          return;
+        }
+
+        setGPSStatus('acquiring');
+
+        navigator.geolocation.getCurrentPosition(
+          function(pos) {
+            cachedPosition = pos;
+            setGPSStatus('acquired');
+          },
+          function(err) {
+            console.warn('GPS error:', err.message);
+            if (err.code === err.PERMISSION_DENIED) {
+              setGPSStatus('denied');
+            } else {
+              setGPSStatus('denied');
+            }
+          },
+          { enableHighAccuracy: true, timeout: GPS_TIMEOUT, maximumAge: GPS_MAX_AGE }
+        );
+
+        // Also watch for updates
+        navigator.geolocation.watchPosition(
+          function(pos) {
+            cachedPosition = pos;
+            setGPSStatus('acquired');
+          },
+          function() {},
+          { enableHighAccuracy: true, maximumAge: GPS_MAX_AGE }
+        );
+      }
+
+      function setGPSStatus(status) {
+        gpsStatus = status;
+        gpsIndicator.className = 'gps-indicator ' + status;
+        var titles = {
+          acquiring: 'GPS: Acquiring...',
+          acquired: 'GPS: Location acquired',
+          denied: 'GPS: Unavailable'
+        };
+        gpsIndicator.title = titles[status] || '';
+      }
+
+      function getLocationText() {
+        if (!cachedPosition) {
+          return { text: 'Location: Unavailable', coords: null };
+        }
+        var lat = cachedPosition.coords.latitude.toFixed(6);
+        var lon = cachedPosition.coords.longitude.toFixed(6);
+        var acc = cachedPosition.coords.accuracy ? Math.round(cachedPosition.coords.accuracy) : 'unknown';
+        var mapLink = 'https://www.google.com/maps?q=' + lat + ',' + lon;
+        return {
+          text: 'Location: ' + mapLink + '\nAccuracy: ~' + acc + ' meters\nCoordinates: ' + lat + ', ' + lon,
+          coords: { lat: lat, lon: lon, accuracy: acc }
+        };
+      }
+
+      // ----- PANIC ALERT -----
+      function triggerPanic() {
+        var user = loadUser();
+        if (!user) {
+          showSetupScreen();
+          return;
+        }
+
+        // Show overlay
+        sendingOverlay.classList.add('active');
+        sendingGpsStatus.textContent = cachedPosition ? 'Location acquired' : 'Location unavailable';
+
+        // Haptic feedback (Android only, iOS ignores)
+        if (navigator.vibrate) {
+          navigator.vibrate([200, 100, 200]);
+        }
+
+        // Build the email
+        var location = getLocationText();
+        var now = new Date();
+        var timestamp = now.toLocaleString();
+
+        var subject = isTestMode ? '[TEST] Panic Alert' : 'Panic Alert';
+
+        var bodyParts = [];
+        if (isTestMode) {
+          bodyParts.push('*** THIS IS A TEST ALERT ***');
+          bodyParts.push('');
+        }
+        bodyParts.push('PANIC ALERT');
+        bodyParts.push('');
+        bodyParts.push('From: ' + user.name + ' (' + user.email + ')');
+        bodyParts.push('Time: ' + timestamp);
+        bodyParts.push('');
+        bodyParts.push(location.text);
+        bodyParts.push('');
+        bodyParts.push('---');
+        bodyParts.push('Sent from JHSC Panic Alert App');
+
+        var body = bodyParts.join('\n');
+
+        // Try Outlook first, then mailto fallback
+        setTimeout(function() {
+          openOutlook(MAILTO_TARGET, subject, body);
+        }, OUTLOOK_OPEN_DELAY);
+      }
+
+      function openOutlook(to, subject, body) {
+        var encodedSubject = encodeURIComponent(subject);
+        var encodedBody = encodeURIComponent(body);
+
+        // Primary: Outlook URL scheme
+        var outlookUrl = 'ms-outlook://compose?to=' + encodeURIComponent(to) +
+                         '&subject=' + encodedSubject +
+                         '&body=' + encodedBody;
+
+        // Fallback: mailto (opens default mail app)
+        var mailtoUrl = 'mailto:' + to +
+                        '?subject=' + encodedSubject +
+                        '&body=' + encodedBody;
+
+        // Try Outlook first
+        var opened = false;
+        var fallbackTimer = null;
+
+        // On iOS, if the URL scheme fails (app not installed), nothing happens.
+        // We use a visibility change to detect if we left the page (app opened).
+        // If we didn't leave after a timeout, try mailto.
+
+        window.location.href = outlookUrl;
+
+        fallbackTimer = setTimeout(function() {
+          // If we're still here after 2 seconds, Outlook probably didn't open
+          // Try mailto as fallback
+          window.location.href = mailtoUrl;
+        }, 2000);
+
+        // If the page becomes hidden (Outlook opened), clear fallback
+        function onVisibilityChange() {
+          if (document.hidden) {
+            clearTimeout(fallbackTimer);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+          }
+        }
+        document.addEventListener('visibilitychange', onVisibilityChange);
+
+        // Hide overlay after a bit regardless
+        setTimeout(function() {
+          sendingOverlay.classList.remove('active');
+          document.removeEventListener('visibilitychange', onVisibilityChange);
+          clearTimeout(fallbackTimer);
+        }, 4000);
+      }
+
+      // ----- FORM VALIDATION -----
+      function validateForm() {
+        var nameOk = nameInput.value.trim().length >= 2;
+        var emailOk = isValidEmail(emailInput.value.trim());
+        saveBtn.disabled = !(nameOk && emailOk);
+        emailError.style.display = (emailInput.value.trim() && !emailOk) ? 'block' : 'none';
+      }
+
+      function isValidEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      }
+
+      // ----- EVENT BINDINGS -----
+      function bindEvents() {
+        // Setup form
+        nameInput.addEventListener('input', validateForm);
+        emailInput.addEventListener('input', validateForm);
+
+        setupForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          var name = nameInput.value.trim();
+          var email = emailInput.value.trim();
+          if (name && isValidEmail(email)) {
+            var user = saveUser(name, email);
+            showMainScreen(user);
+          }
+        });
+
+        // Panic button
+        panicBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          triggerPanic();
+        });
+
+        // Settings (go back to setup to edit)
+        settingsBtn.addEventListener('click', function() {
+          var user = loadUser();
+          showSetupScreen(user);
+        });
+
+        // Test mode toggle
+        testToggle.addEventListener('change', function() {
+          isTestMode = testToggle.checked;
+          testBanner.classList.toggle('active', isTestMode);
+        });
+
+        // When app becomes visible again (user returns from Outlook)
+        document.addEventListener('visibilitychange', function() {
+          if (!document.hidden) {
+            sendingOverlay.classList.remove('active');
+            // Refresh GPS
+            startGPS();
+          }
+        });
+      }
+
+      // ----- START -----
+      document.addEventListener('DOMContentLoaded', init);
+
+    })();
+  </script>
+</body>
+</html>
