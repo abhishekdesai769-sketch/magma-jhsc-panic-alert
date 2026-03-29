@@ -79,23 +79,6 @@
       white-space: nowrap;
     }
 
-    .gps-indicator {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #666;
-      transition: background 0.3s;
-      flex-shrink: 0;
-    }
-    .gps-indicator.acquired { background: #22c55e; }
-    .gps-indicator.acquiring { background: #f59e0b; animation: pulse 1.5s infinite; }
-    .gps-indicator.denied { background: #ef4444; }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-
     .header-right {
       display: flex;
       align-items: center;
@@ -177,18 +160,21 @@
     /* ===== SETUP SCREEN ===== */
     .setup-screen {
       background: #1a1a1a;
-      padding: 40px 24px;
-      justify-content: center;
+      padding: 24px;
+      justify-content: flex-start;
       align-items: center;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     .setup-card {
       background: #222;
       border-radius: 16px;
-      padding: 32px 24px;
+      padding: 28px 24px;
       width: 100%;
       max-width: 380px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      margin: auto 0;
     }
 
     .setup-title {
@@ -235,6 +221,21 @@
     }
     .form-input::placeholder {
       color: #555;
+    }
+
+    textarea.form-input {
+      resize: vertical;
+      min-height: 80px;
+      max-height: 200px;
+      font-family: inherit;
+      line-height: 1.5;
+    }
+
+    .form-hint {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+      line-height: 1.4;
     }
 
     .save-btn {
@@ -334,6 +335,11 @@
             <input class="form-input" type="email" id="setup-email" placeholder="e.g. john.doe@magma-amgm.org" autocomplete="email" required>
             <div class="form-error" id="email-error">Please enter a valid email address</div>
           </div>
+          <div class="form-group">
+            <label class="form-label" for="setup-message">Alert Message</label>
+            <textarea class="form-input" id="setup-message" placeholder="e.g. Reception desk, main floor&#10;or: 3rd floor, room 305&#10;or: Emergency at front entrance" rows="3"></textarea>
+            <div class="form-hint">This message will be included in your panic alert email. Include your usual location or any details that help responders find you. You can change this anytime via the settings gear.</div>
+          </div>
           <button type="submit" class="save-btn" id="save-btn" disabled>Save & Continue</button>
         </form>
       </div>
@@ -344,7 +350,6 @@
       <div class="test-banner" id="test-banner">TEST MODE -- alerts go to admin only</div>
       <div class="header">
         <div class="header-left">
-          <div class="gps-indicator" id="gps-indicator" title="GPS Status"></div>
           <span class="user-name" id="user-name-display"></span>
         </div>
         <div class="header-right">
@@ -354,7 +359,7 @@
       <div class="launching-area">
         <div class="spinner launching-spinner"></div>
         <div class="launching-text">Opening Outlook...</div>
-        <div class="launching-sub" id="launching-gps-status">Capturing location...</div>
+        <div class="launching-sub" id="launching-status">Preparing your alert...</div>
         <div class="launching-hint">Outlook will open with your alert email ready to send.</div>
         <div class="launching-hint launching-hint-secondary">If this was a mistake, simply close Outlook without sending.</div>
       </div>
@@ -378,13 +383,9 @@
       // ----- CONSTANTS -----
       const STORAGE_KEY = 'panicUser';
       const MAILTO_TARGET = 'panicalerts@magma-amgm.org';
-      const GPS_MAX_AGE = 30000;      // 30 seconds
-      const GPS_TIMEOUT = 5000;        // 5 seconds
-      const OUTLOOK_OPEN_DELAY = 1500; // time to show overlay before opening Outlook
+      const OUTLOOK_OPEN_DELAY = 1200; // time to show launching screen before opening Outlook
 
       // ----- STATE -----
-      let cachedPosition = null;
-      let gpsStatus = 'acquiring'; // acquiring | acquired | denied
       let isTestMode = false;
 
       // ----- DOM REFS -----
@@ -395,12 +396,12 @@
       const emailInput = document.getElementById('setup-email');
       const emailError = document.getElementById('email-error');
       const saveBtn = document.getElementById('save-btn');
+      const messageInput = document.getElementById('setup-message');
       const userNameDisplay = document.getElementById('user-name-display');
-      const gpsIndicator = document.getElementById('gps-indicator');
       const settingsBtn = document.getElementById('settings-btn');
       const testToggle = document.getElementById('test-toggle');
       const testBanner = document.getElementById('test-banner');
-      const launchingGpsStatus = document.getElementById('launching-gps-status');
+      const launchingStatus = document.getElementById('launching-status');
 
       // ----- INIT -----
       function init() {
@@ -411,7 +412,6 @@
         } else {
           showSetupScreen();
         }
-        startGPS();
         bindEvents();
       }
 
@@ -437,8 +437,12 @@
         }
       }
 
-      function saveUser(name, email) {
-        const user = { name: name.trim(), email: email.trim().toLowerCase() };
+      function saveUser(name, email, message) {
+        const user = {
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          message: (message || '').trim()
+        };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
         return user;
       }
@@ -450,6 +454,7 @@
         if (prefill) {
           nameInput.value = prefill.name || '';
           emailInput.value = prefill.email || '';
+          messageInput.value = prefill.message || '';
           validateForm();
         }
       }
@@ -461,73 +466,11 @@
 
         // Auto-launch Outlook immediately (the whole point -- no extra button tap)
         if (autoLaunch !== false) {
-          launchingGpsStatus.textContent = cachedPosition ? 'Location acquired' : 'Acquiring location...';
-          // Small delay to let GPS warm up and screen render
+          launchingStatus.textContent = 'Preparing your alert...';
           setTimeout(function() {
             triggerPanic();
           }, 800);
         }
-      }
-
-      // ----- GPS -----
-      function startGPS() {
-        if (!navigator.geolocation) {
-          setGPSStatus('denied');
-          return;
-        }
-
-        setGPSStatus('acquiring');
-
-        navigator.geolocation.getCurrentPosition(
-          function(pos) {
-            cachedPosition = pos;
-            setGPSStatus('acquired');
-          },
-          function(err) {
-            console.warn('GPS error:', err.message);
-            if (err.code === err.PERMISSION_DENIED) {
-              setGPSStatus('denied');
-            } else {
-              setGPSStatus('denied');
-            }
-          },
-          { enableHighAccuracy: true, timeout: GPS_TIMEOUT, maximumAge: GPS_MAX_AGE }
-        );
-
-        // Also watch for updates
-        navigator.geolocation.watchPosition(
-          function(pos) {
-            cachedPosition = pos;
-            setGPSStatus('acquired');
-          },
-          function() {},
-          { enableHighAccuracy: true, maximumAge: GPS_MAX_AGE }
-        );
-      }
-
-      function setGPSStatus(status) {
-        gpsStatus = status;
-        gpsIndicator.className = 'gps-indicator ' + status;
-        var titles = {
-          acquiring: 'GPS: Acquiring...',
-          acquired: 'GPS: Location acquired',
-          denied: 'GPS: Unavailable'
-        };
-        gpsIndicator.title = titles[status] || '';
-      }
-
-      function getLocationText() {
-        if (!cachedPosition) {
-          return { text: 'Location: Unavailable', coords: null };
-        }
-        var lat = cachedPosition.coords.latitude.toFixed(6);
-        var lon = cachedPosition.coords.longitude.toFixed(6);
-        var acc = cachedPosition.coords.accuracy ? Math.round(cachedPosition.coords.accuracy) : 'unknown';
-        var mapLink = 'https://www.google.com/maps?q=' + lat + ',' + lon;
-        return {
-          text: 'Location: ' + mapLink + '\nAccuracy: ~' + acc + ' meters\nCoordinates: ' + lat + ', ' + lon,
-          coords: { lat: lat, lon: lon, accuracy: acc }
-        };
       }
 
       // ----- PANIC ALERT -----
@@ -538,19 +481,14 @@
           return;
         }
 
-        // Update GPS status on the launching screen
-        launchingGpsStatus.textContent = cachedPosition ? 'Location acquired' : 'Location unavailable';
-
         // Haptic feedback (Android only, iOS ignores)
         if (navigator.vibrate) {
           navigator.vibrate([200, 100, 200]);
         }
 
         // Build the email
-        var location = getLocationText();
         var now = new Date();
         var timestamp = now.toLocaleString();
-
         var subject = isTestMode ? '[TEST] Panic Alert' : 'Panic Alert';
 
         var bodyParts = [];
@@ -562,8 +500,10 @@
         bodyParts.push('');
         bodyParts.push('From: ' + user.name + ' (' + user.email + ')');
         bodyParts.push('Time: ' + timestamp);
-        bodyParts.push('');
-        bodyParts.push(location.text);
+        if (user.message) {
+          bodyParts.push('');
+          bodyParts.push(user.message);
+        }
         bodyParts.push('');
         bodyParts.push('---');
         bodyParts.push('Sent from JHSC Panic Alert App');
@@ -571,6 +511,7 @@
         var body = bodyParts.join('\n');
 
         // Try Outlook first, then mailto fallback
+        launchingStatus.textContent = 'Opening Outlook...';
         setTimeout(function() {
           openOutlook(MAILTO_TARGET, subject, body);
         }, OUTLOOK_OPEN_DELAY);
@@ -644,8 +585,9 @@
           e.preventDefault();
           var name = nameInput.value.trim();
           var email = emailInput.value.trim();
+          var message = messageInput.value.trim();
           if (name && isValidEmail(email)) {
-            var user = saveUser(name, email);
+            var user = saveUser(name, email, message);
             showMainScreen(user); // auto-launches Outlook
           }
         });
@@ -665,8 +607,7 @@
         // When app becomes visible again (user returns from Outlook)
         document.addEventListener('visibilitychange', function() {
           if (!document.hidden) {
-            // Refresh GPS for next use
-            startGPS();
+            // App is visible again -- user returned from Outlook
           }
         });
       }
