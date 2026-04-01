@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="PANIC">
-  <meta name="theme-color" content="#CC0000">
-  <title>JHSC Panic Alert</title>
+  <meta name="apple-mobile-web-app-title" content="PANIC Alert">
+  <meta name="theme-color" content="#1B2A4A">
+  <title>MAGMA JHSC Panic Alert</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <style>
@@ -18,13 +18,12 @@
       height: 100%;
       width: 100%;
       overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
       -webkit-font-smoothing: antialiased;
-      background: #1a1a1a;
+      background: #0F1A2E;
       color: #fff;
     }
 
-    /* Safe area padding for notched iPhones */
     body {
       padding-top: env(safe-area-inset-top);
       padding-bottom: env(safe-area-inset-bottom);
@@ -40,25 +39,22 @@
       width: 100%;
     }
 
-    /* ===== SCREENS ===== */
     .screen {
       display: none;
       flex-direction: column;
       height: 100%;
       width: 100%;
     }
-    .screen.active {
-      display: flex;
-    }
+    .screen.active { display: flex; }
 
     /* ===== HEADER BAR ===== */
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 16px;
-      background: #111;
-      border-bottom: 1px solid #333;
+      padding: 12px 20px;
+      background: #1B2A4A;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
       min-height: 52px;
       flex-shrink: 0;
     }
@@ -66,46 +62,47 @@
     .header-left {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+    }
+
+    .header-logo {
+      height: 22px;
+      opacity: 0.7;
     }
 
     .user-name {
       font-size: 14px;
       font-weight: 600;
-      color: #ccc;
+      color: rgba(255,255,255,0.7);
       max-width: 200px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
     .settings-btn {
       background: none;
       border: none;
-      color: #888;
+      color: rgba(255,255,255,0.4);
       font-size: 20px;
       cursor: pointer;
-      padding: 4px;
+      padding: 4px 0;
       line-height: 1;
+      transition: color 0.2s;
     }
-    .settings-btn:hover { color: #fff; }
+    .settings-btn:hover { color: rgba(255,255,255,0.8); }
 
     /* ===== TEST MODE BANNER ===== */
     .test-banner {
       display: none;
-      background: #2563eb;
+      background: #0078D4;
       color: #fff;
       text-align: center;
       padding: 6px;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
-      letter-spacing: 1px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
       flex-shrink: 0;
     }
     .test-banner.active { display: block; }
@@ -117,49 +114,133 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 20px;
-      background: linear-gradient(145deg, #b91c1c 0%, #CC0000 40%, #991b1b 100%);
-      gap: 16px;
+      padding: 32px 24px;
+      background: linear-gradient(165deg, #1B2A4A 0%, #0F1A2E 50%, #1a1028 100%);
+      gap: 0;
+      position: relative;
+      overflow: hidden;
     }
 
-    .launching-spinner {
-      width: 56px;
-      height: 56px;
-      border: 5px solid rgba(255,255,255,0.25);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+    /* Subtle animated background glow */
+    .launching-area::before {
+      content: '';
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(198,40,40,0.15) 0%, transparent 70%);
+      animation: glow-pulse 2.5s ease-in-out infinite;
+    }
+
+    @keyframes glow-pulse {
+      0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+    }
+
+    .launch-logo {
+      width: 140px;
+      margin-bottom: 32px;
+      animation: logo-fade-in 0.6s ease-out;
+      position: relative;
+      z-index: 1;
+    }
+
+    @keyframes logo-fade-in {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .launching-text {
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 700;
       color: #fff;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      margin-bottom: 8px;
+      letter-spacing: 0.3px;
+      position: relative;
+      z-index: 1;
+      animation: text-fade-in 0.6s ease-out 0.2s both;
     }
 
-    .launching-sub {
+    @keyframes text-fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    /* Progress bar */
+    .progress-bar-track {
+      width: 200px;
+      height: 3px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+      margin: 16px 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 30%;
+      background: linear-gradient(90deg, #0078D4, #00B4D8);
+      border-radius: 2px;
+      animation: progress-slide 1.8s ease-in-out infinite;
+    }
+
+    @keyframes progress-slide {
+      0% { transform: translateX(-100%); width: 30%; }
+      50% { width: 60%; }
+      100% { transform: translateX(400%); width: 30%; }
+    }
+
+    .launching-message {
       font-size: 14px;
-      color: rgba(255,255,255,0.8);
+      color: rgba(255,255,255,0.5);
+      text-align: center;
+      max-width: 260px;
+      line-height: 1.5;
+      margin-bottom: 4px;
+      position: relative;
+      z-index: 1;
+      animation: text-fade-in 0.6s ease-out 0.3s both;
+    }
+
+    .launching-user-message {
+      font-size: 15px;
+      color: rgba(255,255,255,0.85);
+      font-weight: 500;
+      text-align: center;
+      max-width: 280px;
+      line-height: 1.4;
+      padding: 10px 16px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 24px;
+      position: relative;
+      z-index: 1;
+      animation: text-fade-in 0.6s ease-out 0.4s both;
     }
 
     .launching-hint {
-      font-size: 13px;
-      color: rgba(255,255,255,0.6);
+      font-size: 12px;
+      color: rgba(255,255,255,0.3);
       text-align: center;
-      max-width: 280px;
+      max-width: 260px;
       line-height: 1.5;
-      margin-top: 8px;
+      position: relative;
+      z-index: 1;
     }
 
     .launching-hint-secondary {
-      margin-top: 0;
+      margin-top: 4px;
       font-style: italic;
     }
 
     /* ===== SETUP SCREEN ===== */
     .setup-screen {
-      background: #1a1a1a;
+      background: linear-gradient(165deg, #1B2A4A 0%, #0F1A2E 100%);
       padding: 24px;
       justify-content: flex-start;
       align-items: center;
@@ -167,60 +248,68 @@
       -webkit-overflow-scrolling: touch;
     }
 
+    .setup-logo {
+      width: 120px;
+      margin-bottom: 24px;
+      margin-top: 12px;
+    }
+
     .setup-card {
-      background: #222;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
       border-radius: 16px;
       padding: 28px 24px;
       width: 100%;
       max-width: 380px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-      margin: auto 0;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
     }
 
     .setup-title {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 700;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       color: #fff;
     }
 
     .setup-subtitle {
-      font-size: 14px;
-      color: #888;
-      margin-bottom: 28px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.45);
+      margin-bottom: 24px;
       line-height: 1.5;
     }
 
     .form-group {
-      margin-bottom: 20px;
+      margin-bottom: 18px;
     }
 
     .form-label {
       display: block;
-      font-size: 13px;
-      font-weight: 600;
-      color: #aaa;
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.4);
       margin-bottom: 6px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 1px;
     }
 
     .form-input {
       width: 100%;
       padding: 12px 14px;
       border-radius: 10px;
-      border: 2px solid #333;
-      background: #1a1a1a;
+      border: 1.5px solid rgba(255,255,255,0.1);
+      background: rgba(0,0,0,0.3);
       color: #fff;
-      font-size: 16px;
+      font-size: 15px;
       outline: none;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
     .form-input:focus {
-      border-color: #CC0000;
+      border-color: #0078D4;
+      box-shadow: 0 0 0 3px rgba(0,120,212,0.15);
     }
     .form-input::placeholder {
-      color: #555;
+      color: rgba(255,255,255,0.2);
     }
 
     textarea.form-input {
@@ -232,10 +321,10 @@
     }
 
     .form-hint {
-      font-size: 12px;
-      color: #666;
-      margin-top: 4px;
-      line-height: 1.4;
+      font-size: 11px;
+      color: rgba(255,255,255,0.3);
+      margin-top: 6px;
+      line-height: 1.5;
     }
 
     .save-btn {
@@ -243,30 +332,29 @@
       padding: 14px;
       border-radius: 12px;
       border: none;
-      background: #CC0000;
+      background: #C62828;
       color: #fff;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 700;
       cursor: pointer;
       margin-top: 8px;
-      transition: background 0.2s;
+      transition: background 0.2s, transform 0.1s;
+      letter-spacing: 0.3px;
     }
-    .save-btn:hover { background: #b91c1c; }
-    .save-btn:active { background: #991b1b; }
+    .save-btn:hover { background: #B71C1C; }
+    .save-btn:active { background: #8E0000; transform: scale(0.98); }
     .save-btn:disabled {
-      background: #444;
-      color: #888;
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.25);
       cursor: not-allowed;
     }
 
     .form-error {
-      color: #ef4444;
+      color: #EF5350;
       font-size: 12px;
       margin-top: 4px;
       display: none;
     }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ===== FOOTER ===== */
     .footer {
@@ -274,8 +362,8 @@
       align-items: center;
       justify-content: center;
       padding: 10px;
-      background: #111;
-      border-top: 1px solid #333;
+      background: rgba(0,0,0,0.3);
+      border-top: 1px solid rgba(255,255,255,0.06);
       flex-shrink: 0;
     }
 
@@ -284,7 +372,7 @@
       align-items: center;
       gap: 8px;
       font-size: 12px;
-      color: #666;
+      color: rgba(255,255,255,0.3);
       cursor: pointer;
       user-select: none;
     }
@@ -293,14 +381,14 @@
       appearance: none;
       width: 36px;
       height: 20px;
-      background: #333;
+      background: rgba(255,255,255,0.1);
       border-radius: 10px;
       position: relative;
       cursor: pointer;
       transition: background 0.2s;
     }
     .test-toggle input:checked {
-      background: #2563eb;
+      background: #0078D4;
     }
     .test-toggle input::after {
       content: '';
@@ -322,9 +410,10 @@
   <div id="app">
     <!-- ===== SETUP SCREEN ===== -->
     <div id="setup-screen" class="screen setup-screen">
+      <img src="data:image/png;base64,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" alt="MAGMA" class="setup-logo">
       <div class="setup-card">
-        <div class="setup-title">JHSC Panic Alert</div>
-        <div class="setup-subtitle">Enter your details to set up the panic alert button. This info is stored only on your device.</div>
+        <div class="setup-title">Panic Alert Setup</div>
+        <div class="setup-subtitle">Configure your alert details. This information is stored only on your device and included in every panic alert you send.</div>
         <form id="setup-form">
           <div class="form-group">
             <label class="form-label" for="setup-name">Full Name</label>
@@ -338,18 +427,19 @@
           <div class="form-group">
             <label class="form-label" for="setup-message">Alert Message</label>
             <textarea class="form-input" id="setup-message" placeholder="e.g. Reception desk, main floor&#10;or: 3rd floor, room 305&#10;or: Emergency at front entrance" rows="3"></textarea>
-            <div class="form-hint">This message will be included in your panic alert email. Include your usual location or any details that help responders find you. You can change this anytime via the settings gear.</div>
+            <div class="form-hint">This message will be included in your alert email. Include your usual location or details that help responders find you. You can update this anytime via the settings icon.</div>
           </div>
           <button type="submit" class="save-btn" id="save-btn" disabled>Save & Continue</button>
         </form>
       </div>
     </div>
 
-    <!-- ===== LAUNCHING SCREEN (shown immediately when registered user opens app) ===== -->
+    <!-- ===== LAUNCHING SCREEN ===== -->
     <div id="main-screen" class="screen">
-      <div class="test-banner" id="test-banner">TEST MODE -- alerts go to admin only</div>
+      <div class="test-banner" id="test-banner">TEST MODE</div>
       <div class="header">
         <div class="header-left">
+          <img src="data:image/png;base64,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" alt="MAGMA" class="header-logo">
           <span class="user-name" id="user-name-display"></span>
         </div>
         <div class="header-right">
@@ -357,10 +447,11 @@
         </div>
       </div>
       <div class="launching-area">
-        <div class="spinner launching-spinner"></div>
-        <div class="launching-text">Opening Outlook...</div>
-        <div class="launching-sub" id="launching-status">Preparing your alert...</div>
-        <div class="launching-hint">Outlook will open with your alert email ready to send.</div>
+        <img src="data:image/png;base64,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" alt="MAGMA" class="launch-logo">
+        <div class="launching-text" id="launching-text">Sending Alert...</div>
+        <div class="progress-bar-track"><div class="progress-bar-fill"></div></div>
+        <div class="launching-user-message" id="launching-user-message"></div>
+        <div class="launching-hint">Outlook will open with your alert ready to send.</div>
         <div class="launching-hint launching-hint-secondary">If this was a mistake, simply close Outlook without sending.</div>
       </div>
       <div class="footer">
@@ -373,40 +464,32 @@
   </div>
 
   <script>
-    // ===================================================================
-    // JHSC PANIC ALERT PWA
-    // ===================================================================
-
     (function() {
       'use strict';
 
-      // ----- CONSTANTS -----
-      const STORAGE_KEY = 'panicUser';
-      const MAILTO_TARGET = 'panicalerts@magma-amgm.org';
-      const OUTLOOK_OPEN_DELAY = 1200; // time to show launching screen before opening Outlook
+      var STORAGE_KEY = 'panicUser';
+      var MAILTO_TARGET = 'panicalerts@magma-amgm.org';
+      var OUTLOOK_OPEN_DELAY = 1200;
+      var isTestMode = false;
 
-      // ----- STATE -----
-      let isTestMode = false;
+      var setupScreen = document.getElementById('setup-screen');
+      var mainScreen = document.getElementById('main-screen');
+      var setupForm = document.getElementById('setup-form');
+      var nameInput = document.getElementById('setup-name');
+      var emailInput = document.getElementById('setup-email');
+      var emailError = document.getElementById('email-error');
+      var saveBtn = document.getElementById('save-btn');
+      var messageInput = document.getElementById('setup-message');
+      var userNameDisplay = document.getElementById('user-name-display');
+      var settingsBtn = document.getElementById('settings-btn');
+      var testToggle = document.getElementById('test-toggle');
+      var testBanner = document.getElementById('test-banner');
+      var launchingText = document.getElementById('launching-text');
+      var launchingUserMessage = document.getElementById('launching-user-message');
 
-      // ----- DOM REFS -----
-      const setupScreen = document.getElementById('setup-screen');
-      const mainScreen = document.getElementById('main-screen');
-      const setupForm = document.getElementById('setup-form');
-      const nameInput = document.getElementById('setup-name');
-      const emailInput = document.getElementById('setup-email');
-      const emailError = document.getElementById('email-error');
-      const saveBtn = document.getElementById('save-btn');
-      const messageInput = document.getElementById('setup-message');
-      const userNameDisplay = document.getElementById('user-name-display');
-      const settingsBtn = document.getElementById('settings-btn');
-      const testToggle = document.getElementById('test-toggle');
-      const testBanner = document.getElementById('test-banner');
-      const launchingStatus = document.getElementById('launching-status');
-
-      // ----- INIT -----
       function init() {
         registerServiceWorker();
-        const user = loadUser();
+        var user = loadUser();
         if (user) {
           showMainScreen(user);
         } else {
@@ -415,30 +498,24 @@
         bindEvents();
       }
 
-      // ----- SERVICE WORKER -----
       function registerServiceWorker() {
         if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.register('sw.js').catch(function(err) {
-            console.warn('SW registration failed:', err);
-          });
+          navigator.serviceWorker.register('sw.js').catch(function() {});
         }
       }
 
-      // ----- USER STORAGE -----
       function loadUser() {
         try {
-          const data = localStorage.getItem(STORAGE_KEY);
+          var data = localStorage.getItem(STORAGE_KEY);
           if (!data) return null;
-          const user = JSON.parse(data);
+          var user = JSON.parse(data);
           if (user && user.name && user.email) return user;
           return null;
-        } catch (e) {
-          return null;
-        }
+        } catch (e) { return null; }
       }
 
       function saveUser(name, email, message) {
-        const user = {
+        var user = {
           name: name.trim(),
           email: email.trim().toLowerCase(),
           message: (message || '').trim()
@@ -447,7 +524,6 @@
         return user;
       }
 
-      // ----- SCREENS -----
       function showSetupScreen(prefill) {
         setupScreen.classList.add('active');
         mainScreen.classList.remove('active');
@@ -463,121 +539,66 @@
         mainScreen.classList.add('active');
         setupScreen.classList.remove('active');
         userNameDisplay.textContent = user.name;
+        launchingUserMessage.textContent = user.message || 'No message set';
 
-        // Auto-launch Outlook immediately (the whole point -- no extra button tap)
         if (autoLaunch !== false) {
-          launchingStatus.textContent = 'Preparing your alert...';
-          setTimeout(function() {
-            triggerPanic();
-          }, 800);
+          launchingText.textContent = 'Sending Alert...';
+          setTimeout(function() { triggerPanic(); }, 800);
         }
       }
 
-      // ----- PANIC ALERT -----
       function triggerPanic() {
         var user = loadUser();
-        if (!user) {
-          showSetupScreen();
-          return;
-        }
+        if (!user) { showSetupScreen(); return; }
 
-        // Haptic feedback (Android only, iOS ignores)
-        if (navigator.vibrate) {
-          navigator.vibrate([200, 100, 200]);
-        }
+        if (navigator.vibrate) { navigator.vibrate([200, 100, 200]); }
 
-        // Build the email
         var now = new Date();
         var timestamp = now.toLocaleString();
         var subject = isTestMode ? '[TEST] Panic Alert' : 'Panic Alert';
 
         var bodyParts = [];
-        if (isTestMode) {
-          bodyParts.push('*** THIS IS A TEST ALERT ***');
-          bodyParts.push('');
-        }
+        if (isTestMode) { bodyParts.push('*** THIS IS A TEST ALERT ***'); bodyParts.push(''); }
         bodyParts.push('PANIC ALERT');
         bodyParts.push('');
         bodyParts.push('From: ' + user.name + ' (' + user.email + ')');
         bodyParts.push('Time: ' + timestamp);
-        if (user.message) {
-          bodyParts.push('');
-          bodyParts.push(user.message);
-        }
+        if (user.message) { bodyParts.push(''); bodyParts.push(user.message); }
         bodyParts.push('');
         bodyParts.push('---');
         bodyParts.push('Sent from JHSC Panic Alert App');
 
         var body = bodyParts.join('\n');
 
-        // Try Outlook first, then mailto fallback
-        launchingStatus.textContent = 'Opening Outlook...';
-        setTimeout(function() {
-          openOutlook(MAILTO_TARGET, subject, body);
-        }, OUTLOOK_OPEN_DELAY);
+        launchingText.textContent = 'Opening Outlook...';
+        setTimeout(function() { openOutlook(MAILTO_TARGET, subject, body); }, OUTLOOK_OPEN_DELAY);
       }
 
       function openOutlook(to, subject, body) {
-        var encodedSubject = encodeURIComponent(subject);
-        var encodedBody = encodeURIComponent(body);
-
-        // Primary: Outlook URL scheme
-        var outlookUrl = 'ms-outlook://compose?to=' + encodeURIComponent(to) +
-                         '&subject=' + encodedSubject +
-                         '&body=' + encodedBody;
-
-        // Fallback: mailto (opens default mail app)
-        var mailtoUrl = 'mailto:' + to +
-                        '?subject=' + encodedSubject +
-                        '&body=' + encodedBody;
-
-        // Try Outlook first
-        var opened = false;
-        var fallbackTimer = null;
-
-        // On iOS, if the URL scheme fails (app not installed), nothing happens.
-        // We use a visibility change to detect if we left the page (app opened).
-        // If we didn't leave after a timeout, try mailto.
+        var es = encodeURIComponent(subject);
+        var eb = encodeURIComponent(body);
+        var outlookUrl = 'ms-outlook://compose?to=' + encodeURIComponent(to) + '&subject=' + es + '&body=' + eb;
+        var mailtoUrl = 'mailto:' + to + '?subject=' + es + '&body=' + eb;
 
         window.location.href = outlookUrl;
 
-        fallbackTimer = setTimeout(function() {
-          // If we're still here after 2 seconds, Outlook probably didn't open
-          // Try mailto as fallback
-          window.location.href = mailtoUrl;
-        }, 2000);
+        var fallbackTimer = setTimeout(function() { window.location.href = mailtoUrl; }, 2000);
 
-        // If the page becomes hidden (Outlook opened), clear fallback
-        function onVisibilityChange() {
-          if (document.hidden) {
-            clearTimeout(fallbackTimer);
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-          }
+        function onVis() {
+          if (document.hidden) { clearTimeout(fallbackTimer); document.removeEventListener('visibilitychange', onVis); }
         }
-        document.addEventListener('visibilitychange', onVisibilityChange);
-
-        // Clean up timers after a bit regardless
-        setTimeout(function() {
-          document.removeEventListener('visibilitychange', onVisibilityChange);
-          clearTimeout(fallbackTimer);
-        }, 4000);
+        document.addEventListener('visibilitychange', onVis);
+        setTimeout(function() { document.removeEventListener('visibilitychange', onVis); clearTimeout(fallbackTimer); }, 4000);
       }
 
-      // ----- FORM VALIDATION -----
       function validateForm() {
         var nameOk = nameInput.value.trim().length >= 2;
-        var emailOk = isValidEmail(emailInput.value.trim());
+        var emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value.trim());
         saveBtn.disabled = !(nameOk && emailOk);
         emailError.style.display = (emailInput.value.trim() && !emailOk) ? 'block' : 'none';
       }
 
-      function isValidEmail(email) {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-      }
-
-      // ----- EVENT BINDINGS -----
       function bindEvents() {
-        // Setup form
         nameInput.addEventListener('input', validateForm);
         emailInput.addEventListener('input', validateForm);
 
@@ -586,35 +607,20 @@
           var name = nameInput.value.trim();
           var email = emailInput.value.trim();
           var message = messageInput.value.trim();
-          if (name && isValidEmail(email)) {
-            var user = saveUser(name, email, message);
-            showMainScreen(user); // auto-launches Outlook
+          if (name && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            showMainScreen(saveUser(name, email, message));
           }
         });
 
-        // Settings (go back to setup to edit -- does NOT auto-trigger on return)
-        settingsBtn.addEventListener('click', function() {
-          var user = loadUser();
-          showSetupScreen(user);
-        });
+        settingsBtn.addEventListener('click', function() { showSetupScreen(loadUser()); });
 
-        // Test mode toggle
         testToggle.addEventListener('change', function() {
           isTestMode = testToggle.checked;
           testBanner.classList.toggle('active', isTestMode);
         });
-
-        // When app becomes visible again (user returns from Outlook)
-        document.addEventListener('visibilitychange', function() {
-          if (!document.hidden) {
-            // App is visible again -- user returned from Outlook
-          }
-        });
       }
 
-      // ----- START -----
       document.addEventListener('DOMContentLoaded', init);
-
     })();
   </script>
 </body>

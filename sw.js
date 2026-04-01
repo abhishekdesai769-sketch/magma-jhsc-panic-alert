@@ -1,7 +1,7 @@
 // JHSC Panic Alert PWA - Service Worker
 // Purpose: Cache app shell for fast/offline loading
 
-const CACHE_NAME = 'panic-v1';
+const CACHE_NAME = 'panic-v2';
 const ASSETS = [
   './',
   './index.html',
